@@ -1,0 +1,22 @@
+[main]
+;protocol choose http or mqtt
+protocol = mqtt
+
+;http request values
+;httpOn = http://<ip>/cm?user=<username>&password=<password>&cmnd=Power%20On
+;httpOff = http://<ip>/cm?user=<username>&password=<password>&cmnd=Power%20Off
+
+;mqtt values
+topic = cmnd/pcswitch/Power
+onValue = ON
+offValue = OFF
+hostname = mqtt.example.com
+port = 8883
+username = user
+password = pass
+;tls accepts 'None', 'certifi' or '<full path to ca certificate file>'
+tls = certifi
+
+;battery limit
+startCharge = 78 
+stopCharge = 80
