@@ -37,10 +37,11 @@ def monitor():
             min = config.getint('main', 'startCharge')
             max = config.getint('main', 'stopCharge')
             cert = config.get('main', 'tls')
-            if cert == "certifi":
-                cert = {'ca_certs':certifi.where()}
-            elif cert != "none":
-                cert = {'ca_certs':cert}
+            if config.get('main', 'protocol')=="mqtt":
+                if cert == "certifi":
+                    cert = {'ca_certs':certifi.where()}
+                elif cert != "none":
+                    cert = {'ca_certs':cert}
             
             if percent < min:
               if plugged == False:
