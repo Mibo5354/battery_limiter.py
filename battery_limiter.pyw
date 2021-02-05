@@ -2,20 +2,10 @@ import PySimpleGUIWx as sg
 import psutil, time
 import threading
 
+#Import config from config.ini
 from configparser import ConfigParser
 config = ConfigParser(interpolation=None)
 config.read('config.ini')
-
-if config.get('main', 'protocol')=="http":
-    #Use unsecured web requests
-    import requests
-elif config.get('main', 'protocol')=="mqtt":
-    #Use TLS secured MQTT
-    import paho.mqtt.publish as publish
-    import certifi
-
-#Import config from config.ini
-limiter = True
 topic = config.get('main', 'topic')
 onVal = config.get('main', 'onValue')
 offVal = config.get('main', 'offValue')
@@ -26,16 +16,26 @@ passwd = config.get('main', 'password')
 min = config.getint('main', 'startCharge')
 max = config.getint('main', 'stopCharge')
 cert = config.get('main', 'tls')
-if config.get('main', 'protocol')=="mqtt":
+proto = config.get('main', 'protocol')
+
+if proto=="http":
+    #Use unsecured web requests
+    import requests
+elif proto=="mqtt":
+    #Use TLS secured MQTT
+    import paho.mqtt.publish as publish
+    import certifi
     if cert == "certifi":
         cert = {'ca_certs':certifi.where()}
     elif cert != "none":
         cert = {'ca_certs':cert}
 
+limiter = True
+
 def turnOn():
-    if config.get('main', 'protocol')=="http":
+    if proto=="http":
         requests.get(config.get('main', 'httpOn'))
-    elif config.get('main', 'protocol')=="mqtt":
+    elif proto=="mqtt":
         publish.single(topic, onVal, hostname=host, port=mport, auth = {'username':uname, 'password':passwd}, tls = cert)
     print("turn on charger")
 
@@ -55,9 +55,9 @@ def monitor():
             elif percent >= max:
               if plugged == True:
                 #run turn off switch
-                if config.get('main', 'protocol')=="http":
+                if proto=="http":
                     requests.get(config.get('main', 'httpOff'))
-                elif config.get('main', 'protocol')=="mqtt":
+                elif proto=="mqtt":
                     publish.single(topic, offVal, hostname=host, port=mport, auth = {'username':uname, 'password':passwd}, tls = cert)
                 print("turn off charger")
         elif ((not limiter) and (not battery.power_plugged)):
