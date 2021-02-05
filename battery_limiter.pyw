@@ -2,7 +2,6 @@ import PySimpleGUIWx as sg
 import psutil, time
 import threading
 
-#Import config
 from configparser import ConfigParser
 config = ConfigParser(interpolation=None)
 config.read('config.ini')
@@ -15,43 +14,45 @@ elif config.get('main', 'protocol')=="mqtt":
     import paho.mqtt.publish as publish
     import certifi
 
+#Import config from config.ini
 limiter = True
+topic = config.get('main', 'topic')
+onVal = config.get('main', 'onValue')
+offVal = config.get('main', 'offValue')
+host = config.get('main', 'hostname')
+mport = config.getint('main', 'port')
+uname = config.get('main', 'username')
+passwd = config.get('main', 'password')
+min = config.getint('main', 'startCharge')
+max = config.getint('main', 'stopCharge')
+cert = config.get('main', 'tls')
+if config.get('main', 'protocol')=="mqtt":
+    if cert == "certifi":
+        cert = {'ca_certs':certifi.where()}
+    elif cert != "none":
+        cert = {'ca_certs':cert}
+
+def turnOn():
+    if config.get('main', 'protocol')=="http":
+        requests.get(config.get('main', 'httpOn'))
+    elif config.get('main', 'protocol')=="mqtt":
+        publish.single(topic, onVal, hostname=host, port=mport, auth = {'username':uname, 'password':passwd}, tls = cert)
+    print("turn on charger")
+
 
 def monitor():
     while True:
-        global limiter
-        while limiter:
+        if limiter:
             print("Limiter running")
             global percent
             battery = psutil.sensors_battery()
             plugged = battery.power_plugged
             percent = int(battery.percent)
-            
-            topic = config.get('main', 'topic')
-            onVal = config.get('main', 'onValue')
-            offVal = config.get('main', 'offValue')
-            host = config.get('main', 'hostname')
-            mport = config.getint('main', 'port')
-            uname = config.get('main', 'username')
-            passwd = config.get('main', 'password')
-            min = config.getint('main', 'startCharge')
-            max = config.getint('main', 'stopCharge')
-            cert = config.get('main', 'tls')
-            if config.get('main', 'protocol')=="mqtt":
-                if cert == "certifi":
-                    cert = {'ca_certs':certifi.where()}
-                elif cert != "none":
-                    cert = {'ca_certs':cert}
-            
-            if percent < min:
+                      
+            if percent <= min:
               if plugged == False:
-                #run turn on switch
-                if config.get('main', 'protocol')=="http":
-                    requests.get(config.get('main', 'httpOn'))
-                elif config.get('main', 'protocol')=="mqtt":
-                    publish.single(topic, onVal, hostname=host, port=mport, auth = {'username':uname, 'password':passwd}, tls = cert)
-                print("turn on charger")
-            elif percent > max:
+                turnOn()
+            elif percent >= max:
               if plugged == True:
                 #run turn off switch
                 if config.get('main', 'protocol')=="http":
@@ -59,12 +60,14 @@ def monitor():
                 elif config.get('main', 'protocol')=="mqtt":
                     publish.single(topic, offVal, hostname=host, port=mport, auth = {'username':uname, 'password':passwd}, tls = cert)
                 print("turn off charger")
-            time.sleep(10)
+        elif ((not limiter) and (not battery.power_plugged)):
+            #turn on charger if limiter is disabled
+            turnOn()
+        time.sleep(60)
+
 def tray():
     menu_def = ['UNUSED', ['Disable Limiter', 'Exit']]
-
     tray = sg.SystemTray(menu=menu_def, filename=r'battery.png')
-
     tray.ShowMessage('Starting', 'Now Starting the Battery Limiter')
 
     while True:
@@ -83,12 +86,13 @@ def tray():
             menu_def = ['UNUSED', ['Disable Limiter', 'Exit']]
             tray.Update(menu=menu_def, filename=r'battery.png')
         #tray.ShowMessage('Event', '{}'.format(event))
+        
+        #print info to console on tray icon click
         print("Battery is at " + str(percent))
-        print("Limiter="+str(limiter))
+        print("Limiter_Enabled="+str(limiter))
+
 if __name__ == "__main__":   
     x = threading.Thread(target=monitor,daemon=True)
     x.start()   
     y = threading.Thread(target=tray)
     y.start()
-
-
