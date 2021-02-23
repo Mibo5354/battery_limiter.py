@@ -36,9 +36,11 @@ def turnOn():
     if proto=="http":
         requests.get(config.get('main', 'httpOn'))
     elif proto=="mqtt":
-        publish.single(topic, onVal, hostname=host, port=mport, auth = {'username':uname, 'password':passwd}, tls = cert)
+        try:
+            publish.single(topic, onVal, hostname=host, port=mport, auth = {'username':uname, 'password':passwd}, tls = cert)
+        except:
+            print("connection error")
     print("turn on charger")
-
 
 def monitor():
     while True:
@@ -58,7 +60,10 @@ def monitor():
                 if proto=="http":
                     requests.get(config.get('main', 'httpOff'))
                 elif proto=="mqtt":
-                    publish.single(topic, offVal, hostname=host, port=mport, auth = {'username':uname, 'password':passwd}, tls = cert)
+                    try:
+                        publish.single(topic, offVal, hostname=host, port=mport, auth = {'username':uname, 'password':passwd}, tls = cert)
+                    except:
+                        print("connection error")
                 print("turn off charger")
         elif ((not limiter) and (not battery.power_plugged)):
             #turn on charger if limiter is disabled
